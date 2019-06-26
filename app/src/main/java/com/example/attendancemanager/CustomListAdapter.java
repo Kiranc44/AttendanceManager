@@ -2,6 +2,7 @@ package com.example.attendancemanager;
 
 import android.app.Activity;
 import android.app.Application;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,12 +14,18 @@ import android.widget.Toast;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import static com.example.attendancemanager.MainActivity.subjects;
+import static com.example.attendancemanager.MainActivity.symbol;
 
 public class CustomListAdapter extends ArrayAdapter {
     private final Activity context;
@@ -38,16 +45,17 @@ public class CustomListAdapter extends ArrayAdapter {
     @Override
     public View getView(final int position, View view, ViewGroup parent)
     {
-        //return super.getView(position, convertView, parent);
 
-
-        LayoutInflater inflater=context.getLayoutInflater();
+        final LayoutInflater inflater=context.getLayoutInflater();
         View rowView=inflater.inflate(R.layout.item_layout,null,true);
+
+        final  TextView name=(TextView)rowView.findViewById(R.id.name);
+        name.setText(symbol.get(position));
 
         final TextView nameTextFiled=(TextView)rowView.findViewById(R.id.nameTextView);
         nameTextFiled.setText(nameArray.get(position));
 
-        TextView percentageDisp=(TextView)rowView.findViewById(R.id.rating);
+        final TextView percentageDisp=(TextView)rowView.findViewById(R.id.rating);
         percentageDisp.setText(status.get(position));
 
         Button present=(Button)rowView.findViewById(R.id.present);
@@ -59,16 +67,14 @@ public class CustomListAdapter extends ArrayAdapter {
             @Override
             public void onClick(View v) {
                 change(getContext().getFilesDir()+"/"+nameArray.get(position)+"/Present.txt");
+                history(getContext().getFilesDir()+"/"+nameArray.get(position)+"/History.txt","Present");
+
                 MainActivity.presentPer=MainActivity.percentage(getContext().getFilesDir()+"/"+nameArray.get(position)+"/Present.txt");
-                MainActivity.presentPer+=1;
-                MainActivity.percentage=(MainActivity.presentPer/(MainActivity.presentPer+MainActivity.absentPer))*100;
+                MainActivity.percentage=(MainActivity.presentPer*100/(MainActivity.presentPer+MainActivity.absentPer));
                 try {
-                    //Toast.makeText(context.getApplicationContext(),String.valueOf(v.getId()),Toast.LENGTH_SHORT).show();
-
-                    MainActivity.status.add(position, String.valueOf(MainActivity.percentage));
-
-                    MainActivity obj = new MainActivity();
-                    obj.setStatus(nameArray, MainActivity.status);
+                    MainActivity.status.set(position, String.valueOf(MainActivity.percentage));
+                    //percentageDisp.setText(MainActivity.status.get(position));
+                    percentageDisp.setText(String.valueOf(MainActivity.percentage));
                 }catch (Exception e){Toast.makeText(context.getApplicationContext(),e.toString(),Toast.LENGTH_SHORT).show();}
             }
         });
@@ -78,13 +84,35 @@ public class CustomListAdapter extends ArrayAdapter {
             @Override
             public void onClick(View v) {
                 change(getContext().getFilesDir()+"/"+nameArray.get(position)+"/Absent.txt");
-                MainActivity.absentPer=MainActivity.percentage(getContext().getFilesDir()+"/"+nameArray.get(position)+"/Absent.txt");
-                MainActivity.absentPer+=MainActivity.absentPer;
+                history(getContext().getFilesDir()+"/"+nameArray.get(position)+"/History.txt","Absent");
 
+                MainActivity.absentPer=MainActivity.percentage(getContext().getFilesDir()+"/"+nameArray.get(position)+"/Absent.txt");
+                MainActivity.percentage=(MainActivity.presentPer*100/(MainActivity.presentPer+MainActivity.absentPer));
+                try {
+                    MainActivity.status.set(position, String.valueOf(MainActivity.percentage));
+                    //percentageDisp.setText(MainActivity.status.get(position));
+                    percentageDisp.setText(String.valueOf(MainActivity.percentage));
+                }catch (Exception e){Toast.makeText(context.getApplicationContext(),e.toString(),Toast.LENGTH_SHORT).show();}
 
             }
         });
 
+
+        rowView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent=new Intent(context,history.class);
+                String file= null;
+                try {
+                    file = getHistory(getContext().getFilesDir()+"/"+nameArray.get(position)+"/History.txt");
+                    intent.putExtra("file",file);
+                    context.startActivity(intent);
+                }
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
 
         return  rowView;
     }
@@ -101,15 +129,12 @@ public class CustomListAdapter extends ArrayAdapter {
             int  pre;
             while ((line=fin.read()) != -1) {
                 k=String.valueOf((char)line);
-                //Toast.makeText(context.getApplicationContext(),k,Toast.LENGTH_SHORT).show();
             }
             pre=Integer.parseInt(k);
             k=String.valueOf(++pre);
 
             FileOutputStream fout=new FileOutputStream(f);
             fout.write(k.getBytes());
-            //Toast.makeText(context.getApplicationContext(),k,Toast.LENGTH_SHORT).show();
-
         }catch (Exception e)
         {
             Toast.makeText(context.getApplicationContext(),e.toString(),Toast.LENGTH_SHORT).show();
@@ -117,25 +142,41 @@ public class CustomListAdapter extends ArrayAdapter {
 
     }
 
-    /*public  int percentage(String folder)
+    public  void history(String folder,String text)
     {
-        int  pre=0;
         File f=new File(folder);
-        try {
-            FileInputStream fin = new FileInputStream(f);
-            String k="";
-            int line;
-
-            while ((line=fin.read()) != -1) {
-                k=String.valueOf((char)line);
-                Toast.makeText(context.getApplicationContext(),k,Toast.LENGTH_SHORT).show();
-            }
-            pre=Integer.parseInt(k);
-
-        }catch (Exception e)
+        try
         {
-            Toast.makeText(context.getApplicationContext(),e.toString(),Toast.LENGTH_SHORT).show();
+            FileOutputStream fos=new FileOutputStream(f,true);
+            String line=System.getProperty("line.separator");
+
+            String date = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date())+"\t"+text;
+
+            fos.write(date.getBytes());
+            fos.write(line.getBytes());
         }
-        return ++pre;
-    }*/
+        catch (FileNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+
+    public  String getHistory(String folder) throws IOException
+    {
+        String data="";
+        File f=new File(folder);
+        BufferedReader br = new BufferedReader(new FileReader(f));
+        String st;
+        while ((st = br.readLine()) != null)
+            data+=st+"\n";
+
+        return  data;
+    }
+
+
 }

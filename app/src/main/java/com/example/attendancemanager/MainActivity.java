@@ -1,14 +1,17 @@
 package com.example.attendancemanager;
 
+import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     static ListView subjects;
     static List<String> nameArray=new ArrayList<String>();
     static List <String> status=new ArrayList<>();
+    static List<String> symbol=new ArrayList<>();
     static CustomListAdapter whatever;
 
 
@@ -33,18 +37,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-
-        add=(Button)findViewById(R.id.add);
-
-
-
         getSubjects();
         whatever = new CustomListAdapter(this, nameArray,status);
         subjects = (ListView) findViewById(R.id.subjects);
         subjects.setAdapter(whatever);
 
-
+        add=(Button)findViewById(R.id.add);
         add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -64,23 +62,21 @@ public class MainActivity extends AppCompatActivity {
     {
         String folder;
         int index;
-
+        nameArray=new ArrayList<>();
 
         File f=new File(String.valueOf(getApplicationContext().getFilesDir()));
         File[] files = f.listFiles();
         for (int i = 0; i < files.length; i++) {
             index=files[i].toString().lastIndexOf("/");
             folder=files[i].toString().substring(index+1);
-            nameArray.add(folder);
-            //status.add("0");
 
+            symbol.add(String.valueOf(folder.charAt(0)));
+            nameArray.add(folder);
 
             presentPer=percentage(getApplicationContext().getFilesDir()+"/"+folder+"/Present.txt");
-            //Toast.makeText(this,String.valueOf(presentPer),Toast.LENGTH_SHORT).show();
             absentPer=percentage(getApplicationContext().getFilesDir()+"/"+folder+"/Absent.txt");
-            //Toast.makeText(this,String.valueOf(absentPer),Toast.LENGTH_SHORT).show();
             try{
-                percentage=(presentPer/(presentPer+absentPer))*100;
+                percentage=(presentPer*100/(presentPer+absentPer));
                 status.add(String.valueOf(percentage));
             }catch (ArithmeticException e){status.add("0");}
 
@@ -98,21 +94,13 @@ public class MainActivity extends AppCompatActivity {
 
             while ((line=fin.read()) != -1) {
                 k=String.valueOf((char)line);
-                //Toast.makeText(context.getApplicationContext(),k,Toast.LENGTH_SHORT).show();
             }
             pre=Integer.parseInt(k);
 
         }catch (Exception e)
         {
-            //Toast.makeText(MainActivity.this,e.toString(),Toast.LENGTH_SHORT).show();
+
         }
         return pre;
     }
-
-    public  void setStatus(List<String> nameArray,List<String> status)
-    {
-        whatever = new CustomListAdapter(this, nameArray,status);
-        subjects.setAdapter(whatever);
-    }
-
 }
